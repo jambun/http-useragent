@@ -185,7 +185,9 @@ multi method add-form-data(Array $data, :$multipart) {
             $ct = $mt.Str;
             my Str $encoded-content = $generated-content;
             self.content = $encoded-content;
-            self.header.field(Content-Length => $encoded-content.encode('ascii').bytes.Str);
+            # jjj - ascii encoding blows up on utf8 content - sigh
+            self.header.field(Content-Length => $encoded-content.encode.bytes.Str);
+            # self.header.field(Content-Length => $encoded-content.encode('ascii').bytes.Str);
         }
     }
     self.header.field(Content-Type => $ct);
@@ -202,7 +204,7 @@ method form-data(Array $content, Str $boundary) {
                 @parts.push: qq!Content-Disposition: form-data; name="$k"$CRLF$CRLF$v!;
             }
             when Array {
-                my ($file, $usename, @headers) = @$v;
+                my ($file, $usename, %headers) = @$v;
                 unless defined $usename {
                     $usename = $file;
                     $usename ~~ s!.* "/"!! if defined($usename);
@@ -214,7 +216,7 @@ method form-data(Array $content, Str $boundary) {
                     $disp ~= qq!; filename="$usename"!;
                 }
                 my $content;
-                my $headers = HTTP::Header.new(|@headers);
+                my $headers = HTTP::Header.new(|%headers);
                 if ($file) {
                     # TODO: dynamic file upload support
                     $content = $file.IO.slurp;
